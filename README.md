@@ -136,8 +136,8 @@ flowchart TD
     end
 
     subgraph P3 ["Phase III: Pathogenicity & Clinical Translation"]
-        S5 -->|Soluble Intracellular (TMH ≤ 1)| S6["Step 6: Virulence & Resistome Profiling<br/>VFDB 2026 Pathogenicity + CARD 2026 ARO Models"]
-        S5 -->|Surface / Secreted| VAC["Reverse Vaccinology Pool<br/>Outer Membrane / Extracellular Antigens"]
+        S5 -->|"Soluble Intracellular (TMH ≤ 1)"| S6["Step 6: Virulence & Resistome Profiling<br/>VFDB 2026 Pathogenicity + CARD 2026 ARO Models"]
+        S5 -->|"Surface / Secreted"| VAC["Reverse Vaccinology Pool<br/>Outer Membrane / Extracellular Antigens"]
         S6 --> S7["Step 7: Clinical Druggability & Novelty<br/>Therapeutic Target Database (TTD 2026 Update)"]
     end
 
