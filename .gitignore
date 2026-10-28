@@ -1,0 +1,95 @@
+# ==============================================================================
+# PanDruVacI .gitignore
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. Large Bioinformatics Reference Databases (Do NOT commit multi-GB files)
+# ------------------------------------------------------------------------------
+databases/
+*.fasta
+*.fa
+*.faa
+*.fna
+*.tar.gz
+*.gz
+
+# ------------------------------------------------------------------------------
+# 2. Pipeline Execution Outputs, Intermediate Files & Results
+# ------------------------------------------------------------------------------
+results/
+.snakemake/
+scratch/
+old/
+readme.txt
+*.log
+slurm-*.out
+slurm-*.err
+
+# ------------------------------------------------------------------------------
+# 3. Compiled Binaries & Standalone Executables
+# ------------------------------------------------------------------------------
+bin/mmseqs
+bin/mmseqs_*
+*.exe
+*.bin
+*.so
+*.dylib
+*.dll
+
+# ------------------------------------------------------------------------------
+# 4. Python Bytecode, Packages & Virtual Environments
+# ------------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Testing & Type Checking
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+
+# ------------------------------------------------------------------------------
+# 5. IDE, Editors & Operating System Metadata
+# ------------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.ipynb_checkpoints/
+
+PIPELINE_RATIONALE.md
+

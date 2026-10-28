@@ -1,0 +1,399 @@
+# ==============================================================================
+# Pipeline Configuration: Pangenome Drug Target Identification Pipeline
+# ==============================================================================
+# Target Pathogen Inputs (Provide via command-line flags when running Snakemake):
+#
+#   snakemake --cores all --config \
+#       job_name="<organism_name>" \
+#       taxonomy_id=<ncbi_taxonomy_id> \
+#       gram_stain="negative" # or "positive"
+#
+# Examples:
+#   A. baumannii:  snakemake --cores all --config job_name="acinetobacter_baumannii" taxonomy_id=470 gram_stain="negative"
+#   P. aeruginosa: snakemake --cores all --config job_name="pseudomonas_aeruginosa" taxonomy_id=287 gram_stain="negative"
+#   S. aureus:     snakemake --cores all --config job_name="staphylococcus_aureus" taxonomy_id=1280 gram_stain="positive"
+# ==============================================================================
+
+# Target Pathogen Parameters (Default null: pass via CLI flags)
+job_name: null        # e.g. "acinetobacter_baumannii", "klebsiella_pneumoniae", "staphylococcus_aureus"
+taxonomy_id: null     # e.g. 470, 573, 1280 (NCBI Taxonomy ID)
+gram_stain: null      # "negative" (5 compartments) or "positive" (4 compartments)
+
+# Base results directory (each pathogen run is saved in results/{job_name}/)
+results_dir: "results"
+
+# Mode of query definition: "builder" (construct query from parameters) or "custom_url"
+query_mode: "builder"
+
+# ------------------------------------------------------------------------------
+# Hardware & Resource Optimization (32-Core Auto-Tuning)
+# ------------------------------------------------------------------------------
+hardware:
+  # When auto_detect_cores is true, the pipeline dynamically detects your system's
+  # total available CPU cores (e.g. 32 cores) and maximizes multithreading across all steps.
+  auto_detect_cores: true
+
+  # Cores to reserve for OS / background system responsiveness (0 = 100% full core utilization)
+  reserve_cores: 0
+
+  # Thread allocation mode:
+  # - "auto" or "max": 100% of usable cores (e.g. 32 cores)
+  # - Percentage string: e.g. "50%", "75%", "25%" of available cores
+  # - Float ratio: e.g. 0.5 (50%), 0.75 (75%)
+  # - Explicit integer: e.g. 16, 8, 4
+  threads: "auto"
+
+  # Optional dedicated percentage field (1-100, e.g. 50 for 50%, 75 for 75%)
+  # If specified and threads is "auto", this percentage will be allocated.
+  threads_percent: null
+
+  # Optional hard ceiling on threads across all steps (null = unconstrained, utilize all 32 cores)
+  max_threads: null
+
+# ------------------------------------------------------------------------------
+# 1. Query Builder Parameters (Initial Retrieval from UniProt)
+# ------------------------------------------------------------------------------
+# Simple, robust retrieval: retrieves proteomes for the taxon.
+# Setting reference_only: true will construct: ((taxonomy_id:<id>) AND (proteome_type:REFERENCE))
+query_params:
+  exclude_excluded: true
+  # If true, directly restricts the UniProt query to Reference proteomes only: (proteome_type:REFERENCE)
+  reference_only: false
+
+# ------------------------------------------------------------------------------
+# 2. Local Filtering Options (Applied to the fetched metadata table)
+# ------------------------------------------------------------------------------
+# UniProt Reference proteomes frequently have CPD marked as 'Unknown'. Filtering by
+# CPD at query time causes valuable Reference proteomes to be lost.
+# Here we filter the metadata table locally before streaming FASTA files.
+filter_options:
+  # Set reference_only to true to download ONLY Reference proteomes (skips all non-reference proteomes)
+  reference_only: false
+
+  # Always retain Reference proteomes, regardless of their CPD status
+  include_reference: true
+
+  # Whether to include Non-Reference proteomes (set false or set reference_only: true to exclude)
+  include_non_reference: true
+
+  # CPD levels to accept for Non-Reference proteomes:
+  #   0: No filter (accept all non-reference proteomes)
+  #   1: Standard
+  #   2: Close to standard (high value)
+  #   3: Close to standard (low value)
+  #   4: Outlier (high value)
+  #   5: Outlier (low value)
+  #   6: Unknown
+  non_reference_cpd_levels:
+    - 1
+
+  # Optional protein count boundaries (set to null if not filtering by count)
+  min_protein_count: null
+  max_protein_count: null
+
+  # Maximum number of proteomes to select/download (set for testing, e.g. 10, or null for all)
+  max_proteomes: null
+
+  # If any proteome FASTA is empty/missing, automatically prune it from downstream analysis and log it
+  auto_prune_empty: true
+
+# ------------------------------------------------------------------------------
+# 3. Custom Direct URL / Query Input (Optional override)
+# ------------------------------------------------------------------------------
+# If query_mode is "custom_url", provide the full URL here
+custom_url: ""
+
+# ------------------------------------------------------------------------------
+# 4. Download Options
+# ------------------------------------------------------------------------------
+download_options:
+  download_fasta: true            # Whether to download the individual FASTA files
+  max_workers: "auto"            # Concurrent download threads ("auto" scales with available cores, up to 16/32)
+  timeout_seconds: 90            # Request timeout per proteome
+  retry_attempts: 3              # Number of retries on download failure
+  skip_existing: true            # Skip download if non-empty FASTA file already exists
+
+# ------------------------------------------------------------------------------
+# 5. Step 2: Redundancy Reduction & Paralog Removal (MMseqs2)
+# ------------------------------------------------------------------------------
+step2_paralog_removal:
+  enabled: true
+  # Sequence identity threshold (0.6 = 60% identity, standard in subtractive genomics)
+  min_seq_id: 0.6
+  # Alignment coverage threshold (0.8 = 80% coverage)
+  coverage: 0.8
+  # Coverage mode:
+  #   0: coverage of query AND target (bidirectional)
+  #   1: coverage of target
+  #   2: coverage of query
+  cov_mode: 0
+  # Clustering mode: "easy-cluster" (hierarchical, sensitive) or "easy-linclust" (linear time)
+  cluster_mode: "easy-cluster"
+  # Number of threads for MMseqs2 ("auto" dynamically utilizes all 32 available CPU cores)
+  threads: "auto"
+
+# ------------------------------------------------------------------------------
+# 6. Step 3: Pangenome Partitioning (MMseqs2)
+# ------------------------------------------------------------------------------
+step3_pangenome:
+  enabled: true
+  # Sequence identity threshold for cross-strain ortholog clustering
+  min_seq_id: 0.6
+  # Alignment coverage threshold
+  coverage: 0.8
+  # Coverage mode (0: bidirectional query & target)
+  cov_mode: 0
+  # Clustering mode: "easy-cluster" (hierarchical, sensitive) or "easy-linclust" (linear time)
+  cluster_mode: "easy-cluster"
+  # Number of threads for MMseqs2 cross-strain clustering ("auto" = full 32 cores)
+  threads: "auto"
+  # Core genome definition threshold:
+  # Percentage of strains required to classify a cluster as Core
+  # 100.0 = Strict Core (present in all strains)
+  # 95.0 = Standard Pangenome Core (present in >= 95% of strains)
+  core_threshold_pct: 100.0
+  # Shell genome threshold:
+  # Strains present in >= shell_threshold_pct and < core_threshold_pct
+  shell_threshold_pct: 15.0
+  # Anything < shell_threshold_pct is classified as Cloud (rare / strain-specific)
+
+# ------------------------------------------------------------------------------
+# 7. Step 4: Subtractive Genomics & Target Prioritization
+# ------------------------------------------------------------------------------
+step4_subtractive_filter:
+  enabled: true                          # Master toggle for Step 4
+  databases_dir: "databases"             # Central directory for reference databases
+  # Number of threads for MMseqs2 searches ("auto" = full 32 cores)
+  threads: "auto"
+
+  # Individual Subtractive Filter Toggles
+  enable_deg_essentiality_filter: true   # Screen against Database of Essential Genes (DEG)
+  enable_human_non_homology_filter: true  # Screen against Human proteome (UP000005640)
+  enable_gut_microbiome_filter: true      # Screen against Human Reference Gut Microbiome (HRGM2 2026)
+
+  # Significance Thresholds (Standard: E < 1e-5, Identity > 35%, Bit Score > 100)
+  max_evalue: 1.0e-5
+  min_pident: 35.0
+  min_bitscore: 100.0
+  min_query_cov: 0.35
+
+  # 1. Host (Human) Non-Homology Settings
+  human_filter:
+    proteome_id: "UP000005640"
+    fasta_path: "databases/human/human_UP000005640.fasta"
+
+  # 2. Gut Microbiome Preservation Settings (HRGM2, Nature Microbiology 2026)
+  gut_microbiome_filter:
+    hrgm2_url: "https://www.decodebiome.org/HRGM/data/protein_catalog/0.HRGMv2_Proteins/6.HRGMv2_50_Proteins/HRGMv2_50_Proteins_rep_seq.faa.gz"
+    fasta_path: "databases/gut_microbiota/hrgm2_50_rep.fasta"
+
+    # Prevalence filtering mode:
+    #   - "percentage": Marks homologous (Tier 2) only if hit in >= max_prevalence_pct of gut species
+    #   - "count": Marks homologous (Tier 2) only if hit in >= max_hit_count gut species/genomes
+    #   - "strict": Marks homologous (Tier 2) on ANY hit (1-hit cutoff)
+    mode: "percentage"
+
+    # Total reference species/clusters in the HRGM2 catalogue baseline:
+    # Set to "auto" to dynamically detect total species from metadata/FASTA headers,
+    # or provide an explicit integer (e.g. 4824) to override.
+    total_gut_species: "auto"
+
+    # Maximum allowed gut microbiome prevalence percentage (default 25.0%)
+    # - If gut_prevalence_pct >= 25.0% -> Tier 2 (Broad-Spectrum Essential / Shared across gut)
+    # - If gut_prevalence_pct < 25.0%  -> Tier 1 (Golden Target / Gut-Safe)
+    max_prevalence_pct: 25.0
+
+    # Maximum allowed unique gut species/genome count (used when mode == "count")
+    max_hit_count: 50
+
+    # Max search results per query sequence to consider in MMseqs2 (default 5000)
+    max_seqs: 5000
+
+  # 3. Essential Gene Screening Settings (DEG 10 Bacteria)
+  deg_filter:
+    deg_url: "http://tubic.org/deg/public/download/DEG10.aa.gz"
+    fasta_path: "databases/deg/deg_bacteria.fasta"
+
+# ------------------------------------------------------------------------------
+# 8. Step 5: Subcellular Localization & Transmembrane Topology
+# ------------------------------------------------------------------------------
+step5_subcellular_localization:
+  enabled: true
+  threads: "auto"
+  # Bacterial cell wall architecture: "negative" (Gram-negative) or "positive" (Gram-positive)
+  # Gram-negative: Cytoplasmic, Cytoplasmic Membrane, Periplasmic, Outer Membrane, Extracellular
+  # Gram-positive: Cytoplasmic, Cytoplasmic Membrane, Cell Wall, Extracellular
+  gram_stain: null
+
+  # Target Tier Filter: if true, strictly processes only Tier 1: Pathogen-Selective (Microbiome-Safe) targets
+  tier1_only: true
+
+  # Therapeutic Modality Filter for downstream steps:
+  #   - "drug_candidates"    : Soluble small-molecule targets (Cytoplasmic & Periplasmic with TMH <= max_tmh)
+  #   - "cytoplasmic_only"   : Strictly Cytoplasmic enzymes (TMH <= max_tmh)
+  #   - "vaccine_candidates" : Outer membrane & surface/secreted vaccine targets
+  #   - "all"                : All feasible targets across all compartments
+  target_modality: "drug_candidates"
+
+  # Druggability filter: maximum allowed transmembrane helices (TMH) for assay-feasible targets
+  # Targets with TMH <= max_tmh_for_druggable are classified as Feasible (Soluble/Single Anchor)
+  # Targets with TMH > max_tmh_for_druggable are classified as Deprioritized (Multi-Pass Membrane)
+  max_tmh_for_druggable: 1
+
+  # Kyte-Doolittle hydropathy sliding window parameters for de novo TMH prediction
+  hydropathy_threshold: 1.6
+  window_size: 19
+  min_loop_length: 5
+
+  # UniProtKB REST API settings
+  batch_size: 100
+  cache_dir: "databases/cache/uniprot_subcell"
+
+# ------------------------------------------------------------------------------
+# 9. Step 6: Virulence Factor (VFDB) & Antimicrobial Resistance (CARD) Screening
+# ------------------------------------------------------------------------------
+step6_virulence_resistance:
+  enabled: true
+  threads: "auto"
+
+  # Input candidate set from Step 5:
+  #   - "prioritized_drug_candidates" : Filtered small-molecule targets (Cytoplasmic/Periplasmic, TMH <= 1)
+  #   - "tier1_druggable_cytoplasmic" : Strictly Cytoplasmic targets
+  #   - "tier1_surface_vaccine_targets" : Surface-exposed/outer-membrane vaccine targets
+  #   - "subcellular_master" : All targets evaluated in Step 5
+  input_dataset: "prioritized_drug_candidates"
+
+  # Significance Thresholds for MMseqs2 Searches
+  max_evalue: 1.0e-5
+  min_pident: 30.0
+  min_bitscore: 100.0
+  min_query_cov: 0.35
+
+  # 1. Virulence Factor Database (VFDB) Settings
+  vfdb:
+    # "core": Experimentally verified VFs only (setA, recommended)
+    # "full": All known and predicted VFs (setB)
+    dataset: "core"
+    url: "https://www.mgc.ac.cn/VFs/Down/VFDB_setA_pro.fas.gz"
+    fasta_path: "databases/vfdb/VFDB_setA_pro.fasta"
+
+  # 2. Comprehensive Antibiotic Resistance Database (CARD) Settings
+  card:
+    url: "https://card.mcmaster.ca/latest/data"
+    database_dir: "databases/card"
+    fasta_path: "databases/card/protein_fasta_protein_homolog_model.fasta"
+    aro_index_path: "databases/card/aro_index.tsv"
+
+# ------------------------------------------------------------------------------
+# 10. Step 7: Target Druggability & Novelty Assessment (TTD 2026)
+# ------------------------------------------------------------------------------
+step7_target_druggability_ttd:
+  enabled: true
+  threads: "auto"
+
+  # Target pool to evaluate:
+  #   - "all_prioritized"      : All 419 targets from Step 6 (Dual-Action + Clean + Resistance-Breakers) [Recommended]
+  #   - "dual_action_only"     : Only the 47 Dual-Action Super-Targets
+  #   - "clean_essential_only" : Only the 361 Clean Essential Targets
+  #   - "resistance_breakers"  : Only the 11 Resistance-Breaker Candidates
+  target_pool: "all_prioritized"
+
+  # Significance Thresholds for MMseqs2 Searches against TTD Sequences
+  max_evalue: 1.0e-5
+  min_pident: 30.0
+  min_bitscore: 100.0
+  min_query_cov: 0.35
+
+  # Therapeutic Target Database (TTD 2026 Update) Settings
+  database_dir: "databases/ttd"
+  ttd_urls:
+    target_download: "https://ttd.idrblab.cn/files/download/P1-01-TTD_target_download.txt"
+    drug_download: "https://ttd.idrblab.cn/files/download/P1-02-TTD_drug_download.txt"
+    uniprot_all: "https://ttd.idrblab.cn/files/download/P2-01-TTD_uniprot_all.txt"
+    sequence_all: "https://ttd.idrblab.cn/files/download/P2-06-TTD_sequence_all.txt"
+    drug_target_mapping: "https://ttd.idrblab.cn/files/download/P1-07-Drug-TargetMapping.xlsx"
+
+# ------------------------------------------------------------------------------
+# 11. Step 8: Metabolic Pathway & Choke-Point Analysis (KEGG / BioCyc)
+# ------------------------------------------------------------------------------
+step8_metabolic_chokepoint:
+  enabled: true
+  threads: "auto"
+
+  # Organism KEGG Code resolution:
+  #   - "auto" : Dynamically queries KEGG REST API using query_params.taxonomy_id
+  #   - Or specify explicit 3/4-letter KEGG organism code (e.g. "kpn" for K. pneumoniae, "aba" for A. baumannii)
+  kegg_organism_code: "auto"
+
+  # Human KEGG organism code (host baseline for pathway non-homology)
+  human_kegg_code: "hsa"
+
+  # Whether to filter out ubiquitous currency metabolites (H2O, ATP, ADP, NADH, NAD+, H+, Pi, PPi, CO2)
+  # Standard practice per Yeh et al. Genome Res (2004) to avoid false bottleneck artifacts
+  filter_currency_metabolites: true
+
+  # Custom currency metabolites list (case-insensitive substring/formula match)
+  currency_metabolites:
+    - "H2O"
+    - "ATP"
+    - "ADP"
+    - "AMP"
+    - "NADH"
+    - "NAD+"
+    - "NADPH"
+    - "NADP+"
+    - "Phosphate"
+    - "Diphosphate"
+    - "Orthophosphate"
+    - "H+"
+    - "CO2"
+    - "CoA"
+    - "Oxygen"
+    - "NH3"
+    - "Water"
+
+  # Target pool from Step 7:
+  #   - "all_prioritized"  : All 419 targets from Step 7
+  #   - "novel_only"       : Only the 396 novel first-in-class targets
+  #   - "dual_action_only" : Only the novel dual-action super-targets
+  target_pool: "all_prioritized"
+
+  # Cache directory for downloaded KEGG / reaction definitions
+  cache_dir: "databases/cache/kegg_metabolic"
+
+# ------------------------------------------------------------------------------
+# 12. Step 9: Protein-Protein Interactome & Network Hub Analysis (STRING v12)
+# ------------------------------------------------------------------------------
+step9_network_biology_string:
+  enabled: true
+  threads: "auto"
+
+  # STRING interaction confidence score threshold:
+  #   - 400 : Medium confidence
+  #   - 700 : High confidence (recommended standard for systems biology)
+  #   - 900 : Highest confidence
+  confidence_score: 700
+
+  # Additional interaction partners to fetch around candidate targets:
+  #   - 0 : Only direct interactions among targets
+  #   - 10 : Include up to 10 high-confidence interactome partners to accurately model topological betweenness
+  additional_interactors: 10
+
+  # Centrality thresholding mode:
+  #   - "std"        : Mean + (std_multiplier * std) per Yu et al. Science (2007)
+  #   - "percentile" : Top percentile (e.g. 90th percentile)
+  hub_cutoff_mode: "std"
+
+  # Standard deviation multiplier for Hub (Degree) and Bottleneck (Betweenness) classification
+  hub_std_multiplier: 1.0
+  bottleneck_std_multiplier: 1.0
+
+  # Target pool from Step 8 to evaluate:
+  #   - "all_prioritized" : All 419 targets from Step 8
+  #   - "double_chokepoints" : Only the 52 double choke-point targets
+  #   - "definitive_leads" : Only the top definitive gold-standard leads
+  target_pool: "all_prioritized"
+
+  # Cache directory for STRING API responses
+  cache_dir: "databases/cache/string_network"
+
