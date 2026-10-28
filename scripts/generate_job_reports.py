@@ -105,11 +105,6 @@ flowchart TD
         H --> I["9. Protein Interactome & Centrality Biology<br/>STRING v12 Interactome (Score ≥ 700) + Brandes Betweenness Centrality"]
         I --> J["10. Final Multi-Omics Lead Extraction<br/>FASTA Extraction, TSV/CSV Export & Publication Reports"]
     end
-
-    style S1 fill:#f0f4f8,stroke:#2b6cb0,stroke-width:2px
-    style S2 fill:#f0fff4,stroke:#2f855a,stroke-width:2px
-    style S3 fill:#fffaf0,stroke:#c05621,stroke-width:2px
-    style S4 fill:#faf5ff,stroke:#6b46c1,stroke-width:2px
 ```
 
 ---

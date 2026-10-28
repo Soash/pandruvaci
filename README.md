@@ -147,11 +147,6 @@ flowchart TD
         S9 --> REP["Step 10: Multi-Omics Lead Extraction & Auto-Reporting<br/>FASTA Sequences + METHODOLOGY.md & RESULTS.md"]
         VAC --> REP
     end
-
-    style P1 fill:#f0f4f8,stroke:#2b6cb0,stroke-width:2px
-    style P2 fill:#f0fff4,stroke:#2f855a,stroke-width:2px
-    style P3 fill:#fffaf0,stroke:#c05621,stroke-width:2px
-    style P4 fill:#faf5ff,stroke:#6b46c1,stroke-width:2px
 ```
 
 ---
