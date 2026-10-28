@@ -66,20 +66,20 @@ Only representative sequences from **Core** clusters advance to downstream scree
 Core proteins are screened sequentially against the human host, bacterial essential genes, and the human gut microbiota:
 
 1. **Host Non-Homology**: Excludes cross-reactive sequences matching the Human Reference Proteome (`UP000005640`):
-   $$\text{Human\_Homolog}(P) \iff (E \le 1.0 \times 10^{-5}) \land (\text{Identity} \ge 30\%) \land (\text{BitScore} \ge 100)$$
+   $$\text{Human-Homolog}(P) \iff (E \le 1.0 \times 10^{-5}) \land (\text{Identity} \ge 30\%) \land (\text{BitScore} \ge 100)$$
 
 2. **Bacterial Essentiality**: Confirms indispensability against the Database of Essential Genes (DEG 10.0):
    $$\text{Essential}(P) \iff (E \le 1.0 \times 10^{-5}) \land (\text{Identity} \ge 30\%) \land (\text{Coverage} \ge 50\%)$$
 
 3. **Commensal Microbiome Preservation**: Rather than a binary hit cutoff, PanDruVacI evaluates prevalence across the 4,824 reference gut species in HRGM2 (Nature Microbiology 2026):
-   $$\text{Prevalence}_{\text{gut}}(P) = \frac{\text{Gut Hit Count}}{N_{\text{gut\_species}}} \times 100\%$$
+   $$\text{Prevalence}_{\text{gut}}(P) = \frac{\text{Gut Hit Count}}{N_{\text{gut-species}}} \times 100\%$$
 
 Targets are stratified into rigorous therapeutic tiers:
 
 $$\text{Tier}(P) = \begin{cases}
-\mathbf{Tier\ 1\ (Pathogen\text{-}Selective)}, & \text{Essential}(P) \land \neg \text{Human\_Homolog}(P) \land (\text{Prevalence}_{\text{gut}}(P) < 25\%) \\
-\mathbf{Tier\ 2\ (Broad\text{-}Spectrum)}, & \text{Essential}(P) \land \neg \text{Human\_Homolog}(P) \land (\text{Prevalence}_{\text{gut}}(P) \ge 25\%) \\
-\mathbf{Excluded\ (Host\text{-}Cytotoxic)}, & \text{Human\_Homolog}(P)
+\mathbf{Tier\ 1\ (Pathogen\text{-}Selective)}, & \text{Essential}(P) \land \neg \text{Human-Homolog}(P) \land (\text{Prevalence}_{\text{gut}}(P) < 25\%) \\
+\mathbf{Tier\ 2\ (Broad\text{-}Spectrum)}, & \text{Essential}(P) \land \neg \text{Human-Homolog}(P) \land (\text{Prevalence}_{\text{gut}}(P) \ge 25\%) \\
+\mathbf{Excluded\ (Host\text{-}Cytotoxic)}, & \text{Human-Homolog}(P)
 \end{cases}$$
 
 ### 3.3 Biophysical Topology & Transmembrane Hydropathy
@@ -99,7 +99,7 @@ Using dynamically resolved KEGG organism models, metabolic reactions are reconst
 
 An enzyme is classified as a **Double Choke-Point** if and only if it simultaneously controls both unique consumption and unique synthesis:
 
-$$\text{Double\_Choke\_Point}(E) \iff \left(|\mathcal{S}_{\text{unique}}(E)| \ge 1\right) \land \left(|\mathcal{P}_{\text{unique}}(E)| \ge 1\right)$$
+$$\text{Double-Choke-Point}(E) \iff \left(|\mathcal{S}_{\text{unique}}(E)| \ge 1\right) \land \left(|\mathcal{P}_{\text{unique}}(E)| \ge 1\right)$$
 
 Inhibiting a double choke-point triggers simultaneous **toxic substrate accumulation** and **downstream product starvation**, maximizing bactericidal efficacy.
 
