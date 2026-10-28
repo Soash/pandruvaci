@@ -74,13 +74,11 @@ Core proteins are screened sequentially against the human host, bacterial essent
 3. **Commensal Microbiome Preservation**: Rather than a binary hit cutoff, PanDruVacI evaluates prevalence across the 4,824 reference gut species in HRGM2 (Nature Microbiology 2026):
    $$\text{Prevalence}_{\text{gut}}(P) = \frac{\text{Gut Hit Count}}{N_{\text{gut-species}}} \times 100\%$$
 
-Targets are stratified into rigorous therapeutic tiers:
+Targets are stratified into therapeutic tiers:
 
-$$\text{Tier}(P) = \begin{cases}
-\mathbf{Tier\ 1\ (Pathogen\text{-}Selective)}, & \text{Essential}(P) \land \neg \text{Human-Homolog}(P) \land (\text{Prevalence}_{\text{gut}}(P) < 25\%) \\
-\mathbf{Tier\ 2\ (Broad\text{-}Spectrum)}, & \text{Essential}(P) \land \neg \text{Human-Homolog}(P) \land (\text{Prevalence}_{\text{gut}}(P) \ge 25\%) \\
-\mathbf{Excluded\ (Host\text{-}Cytotoxic)}, & \text{Human-Homolog}(P)
-\end{cases}$$
+* **Tier 1 (Pathogen-Selective)**: Essential proteins lacking human homology with low gut microbiome prevalence ($< 25\%$), preserving commensal flora.
+* **Tier 2 (Broad-Spectrum)**: Essential proteins lacking human homology but conserved across gut commensals ($\ge 25\%$).
+* **Excluded (Host-Cytotoxic)**: Cross-reactive proteins matching human reference homologs.
 
 ### 3.3 Biophysical Topology & Transmembrane Hydropathy
 
