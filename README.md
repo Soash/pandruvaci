@@ -124,6 +124,11 @@ Proteins satisfying both $k_i \ge \text{Cutoff}_{\text{Hub}}$ and $BC_i \ge \tex
 ## 4. End-to-End Pipeline Architecture
 
 ```mermaid
+---
+config:
+  flowchart:
+    wrappingWidth: 480
+---
 flowchart TD
     subgraph P1 ["Phase I: Pangenome Construction & Conservation"]
         S1["Step 1: UniProtKB Automated Proteome Ingestion<br/>Taxonomy Query + CPD Qualification"] --> S2["Step 2: Intra-Strain Redundancy Reduction<br/>MMseqs2 easy-cluster (60% ID, 80% Cov)"]

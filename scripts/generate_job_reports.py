@@ -84,6 +84,11 @@ The rapid dissemination of multi-drug resistant (MDR) and extensively drug-resis
 To overcome these structural limitations, we developed an end-to-end, multi-omics computational discovery framework that integrates **pangenomics, subtractive genomics, biophysical subcellular topology, virulence and resistome profiling, clinical target druggability, stoichiometric metabolic network modeling, and whole-proteome interactome topology**. The framework is fully orchestrated by the **Snakemake** workflow engine, dynamically auto-detects host compute hardware across up to 32 parallel cores, and operates in a strictly **species-agnostic** manner without species-specific hardcoding.
 
 ```mermaid
+---
+config:
+  flowchart:
+    wrappingWidth: 480
+---
 flowchart TD
     subgraph S1 ["Phase I: Pangenome Construction & Conservation"]
         A["1. Dynamic Proteome Acquisition<br/>UniProt REST API + CPD Completeness"] --> B["2. Redundancy & Paralog Removal<br/>MMseqs2 Intra-Strain Clustering (60% ID, 80% Cov)"]
